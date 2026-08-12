@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Inbox Action Wheel — Copilot in Outlook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700;9..144,900&family=Archivo:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --wf-red:#D71E28;
+  --maroon:#6E1520;
+  --maroon-deep:#4E0E16;
+  --gold:#FFCD41;
+  --gold-deep:#E0A800;
+  --cream:#FAF5EC;
+  --cream-dim:#EFE6D6;
+  --ink:#231014;
+  --tile:#FFFDF8;
+  --shadow:0 10px 30px rgba(30,5,10,.45);
+  font-size:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:'Archivo',system-ui,sans-serif;
+  background:
+    radial-gradient(1200px 600px at 50% -10%, #8C1B27 0%, transparent 60%),
+    linear-gradient(165deg, var(--maroon) 0%, var(--maroon-deep) 70%, #35090F 100%);
+  color:var(--cream);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+button{font-family:inherit;cursor:pointer;border:none}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+/* ---------- header ---------- */
+header{
+  display:flex;align-items:baseline;justify-content:space-between;
+  padding:1rem 1.6rem .6rem;gap:1rem;flex-wrap:wrap;
+}
+.brand{display:flex;align-items:baseline;gap:.8rem}
+.brand .eyebrow{
+  font-size:.68rem;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--gold);font-weight:700;
+}
+h1{
+  font-family:'Fraunces',serif;font-weight:900;font-size:clamp(1.4rem,3vw,2.1rem);
+  letter-spacing:.01em;line-height:1;
+}
+h1 em{font-style:normal;color:var(--gold)}
+.round-tag{
+  font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
+  color:var(--cream-dim);
+}
+
+/* ---------- layout ---------- */
+main{
+  display:grid;gap:1.1rem;
+  grid-template-columns:minmax(300px,420px) 1fr;
+  grid-template-areas:"wheel board" "wheel controls" "teams teams";
+  padding:0 1.6rem 1.6rem;max-width:1500px;margin:0 auto;
+}
+@media(max-width:980px){
+  main{grid-template-columns:1fr;grid-template-areas:"board" "wheel" "controls" "teams"}
+}
+
+/* ---------- wheel ---------- */
+.wheel-zone{grid-area:wheel;display:flex;flex-direction:column;align-items:center;gap:1rem}
+.wheel-wrap{position:relative;width:min(92vw,380px);aspect-ratio:1}
+.pointer{
+  position:absolute;top:-6px;left:50%;transform:translateX(-50%);
+  width:0;height:0;z-index:5;
+  border-left:16px solid transparent;border-right:16px solid transparent;
+  border-top:30px solid var(--gold);
+  filter:drop-shadow(0 3px 4px rgba(0,0,0,.5));
+}
+#wheelCanvas{
+  width:100%;height:100%;border-radius:50%;
+  box-shadow:var(--shadow), inset 0 0 0 8px rgba(0,0,0,.25);
+  transition:transform 5.2s cubic-bezier(.12,.68,.16,1);
+  will-change:transform;
+}
+.hub{
+  position:absolute;inset:0;margin:auto;width:22%;aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle at 35% 30%, #fff4cf, var(--gold) 55%, var(--gold-deep));
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Fraunces',serif;font-weight:900;color:var(--maroon-deep);
+  font-size:.8rem;letter-spacing:.06em;text-align:center;
+  box-shadow:0 4px 12px rgba(0,0,0,.45);pointer-events:none;z-index:4;
+}
+.spin-result{
+  min-height:2.4rem;font-family:'Fraunces',serif;font-weight:700;
+  font-size:1.35rem;color:var(--gold);text-align:center;
+}
+.big-btn{
+  background:linear-gradient(180deg,#F42B36,var(--wf-red) 55%,#B0121C);
+  color:#fff;font-weight:800;letter-spacing:.1em;text-transform:uppercase;
+  padding:.85rem 2.6rem;border-radius:999px;font-size:1.05rem;
+  box-shadow:0 6px 0 #7d0d15, var(--shadow);
+  transition:transform .08s, box-shadow .08s;
+}
+.big-btn:active:not(:disabled){transform:translateY(4px);box-shadow:0 2px 0 #7d0d15}
+.big-btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ---------- board ---------- */
+.board-zone{grid-area:board;display:flex;flex-direction:column;gap:.7rem;justify-content:center}
+.category{
+  align-self:flex-start;
+  background:var(--gold);color:var(--maroon-deep);
+  font-weight:800;letter-spacing:.18em;text-transform:uppercase;font-size:.78rem;
+  padding:.4rem .9rem;border-radius:4px;
+}
+.puzzle{
+  display:flex;flex-direction:column;gap:.5rem;align-items:center;
+  background:rgba(0,0,0,.22);border:1px solid rgba(255,205,65,.25);
+  border-radius:14px;padding:1.2rem .9rem;min-height:200px;justify-content:center;
+}
+.line{display:flex;gap:.4rem;flex-wrap:nowrap;justify-content:center}
+.word{display:flex;gap:.28rem}
+.tile{
+  width:clamp(26px,3.4vw,46px);aspect-ratio:3/4;border-radius:5px;
+  background:linear-gradient(180deg,#0E4D2E,#0A3A22);
+  border:1px solid rgba(255,255,255,.14);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Fraunces',serif;font-weight:900;
+  font-size:clamp(1rem,2.4vw,1.8rem);color:var(--ink);
+  perspective:400px;position:relative;
+}
+.tile.space{background:transparent;border:none}
+.tile.punct{background:transparent;border:none;color:var(--cream);font-size:clamp(1rem,2.2vw,1.6rem)}
+.tile .face{
+  position:absolute;inset:0;border-radius:5px;display:flex;align-items:center;justify-content:center;
+  backface-visibility:hidden;transition:transform .45s cubic-bezier(.3,.7,.3,1);
+}
+.tile .back{background:linear-gradient(180deg,#0E4D2E,#0A3A22);transform:rotateX(0)}
+.tile .front{background:var(--tile);transform:rotateX(180deg);box-shadow:inset 0 -3px 0 rgba(0,0,0,.12)}
+.tile.revealed .back{transform:rotateX(180deg)}
+.tile.revealed .front{transform:rotateX(0)}
+.tile.flash{animation:flash .5s ease 2}
+@keyframes flash{50%{box-shadow:0 0 0 4px var(--gold)}}
+@media(prefers-reduced-motion:reduce){
+  #wheelCanvas{transition-duration:.4s}
+  .tile .face{transition-duration:.15s}
+}
+
+/* ---------- controls ---------- */
+.controls{grid-area:controls;display:flex;flex-direction:column;gap:.8rem}
+.status{
+  font-family:'Fraunces',serif;font-size:1.15rem;font-weight:700;min-height:1.6rem;
+}
+.status b{color:var(--gold)}
+.kb{display:flex;flex-direction:column;gap:.35rem}
+.kb-row{display:flex;gap:.35rem;flex-wrap:wrap}
+.key{
+  width:2.5rem;height:2.7rem;border-radius:7px;font-weight:800;font-size:1.05rem;
+  background:var(--cream);color:var(--ink);
+  box-shadow:0 3px 0 rgba(0,0,0,.35);transition:transform .06s;
+}
+.key.vowel{background:var(--gold)}
+.key:active:not(:disabled){transform:translateY(2px);box-shadow:none}
+.key:disabled{opacity:.28;cursor:not-allowed;box-shadow:none}
+.action-row{display:flex;gap:.6rem;flex-wrap:wrap}
+.chip-btn{
+  background:transparent;color:var(--cream);font-weight:700;font-size:.85rem;
+  border:2px solid rgba(250,245,236,.5);border-radius:999px;padding:.5rem 1.1rem;
+  letter-spacing:.06em;transition:border-color .15s,color .15s;
+}
+.chip-btn:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+.chip-btn:disabled{opacity:.35;cursor:not-allowed}
+.hint{font-size:.78rem;color:var(--cream-dim);letter-spacing:.03em}
+
+/* ---------- teams ---------- */
+.teams{grid-area:teams;display:grid;gap:.8rem;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.team{
+  background:rgba(0,0,0,.25);border:2px solid rgba(255,255,255,.12);
+  border-radius:12px;padding:.8rem 1rem;transition:border-color .2s, background .2s;
+}
+.team.active{border-color:var(--gold);background:rgba(255,205,65,.1)}
+.team .name{font-weight:800;font-size:.95rem;letter-spacing:.04em}
+.team .score{font-family:'Fraunces',serif;font-weight:900;font-size:1.9rem;color:var(--gold)}
+.team .roundpts{font-size:.72rem;color:var(--cream-dim);letter-spacing:.08em;text-transform:uppercase}
+.team.active .turn-dot{display:inline-block}
+.turn-dot{display:none;width:.55rem;height:.55rem;border-radius:50%;background:var(--gold);margin-right:.4rem;animation:pulse 1.2s infinite}
+@keyframes pulse{50%{opacity:.3}}
+
+/* ---------- overlays ---------- */
+.overlay{
+  position:fixed;inset:0;background:rgba(20,4,8,.82);backdrop-filter:blur(3px);
+  display:flex;align-items:center;justify-content:center;z-index:20;padding:1rem;
+}
+.overlay[hidden]{display:none}
+.card{
+  background:var(--cream);color:var(--ink);border-radius:16px;box-shadow:var(--shadow);
+  width:min(560px,94vw);padding:2rem;display:flex;flex-direction:column;gap:1.1rem;
+}
+.card h2{font-family:'Fraunces',serif;font-weight:900;font-size:1.7rem;color:var(--maroon)}
+.card p{font-size:.95rem;line-height:1.45}
+.card label{font-weight:700;font-size:.82rem;letter-spacing:.08em;text-transform:uppercase;color:var(--maroon)}
+.card input[type=text]{
+  width:100%;padding:.65rem .8rem;border:2px solid var(--maroon);border-radius:8px;
+  font-family:inherit;font-size:1rem;font-weight:600;background:#fff;
+}
+.field{display:flex;flex-direction:column;gap:.35rem}
+.count-row{display:flex;gap:.5rem}
+.count-row button{
+  flex:1;padding:.6rem;border-radius:8px;font-weight:800;font-size:1rem;
+  background:#fff;border:2px solid var(--maroon);color:var(--maroon);
+}
+.count-row button[aria-pressed=true]{background:var(--maroon);color:#fff}
+.card .big-btn{align-self:center}
+.solve-reveal{
+  font-family:'Fraunces',serif;font-weight:900;font-size:1.5rem;color:var(--maroon);
+  text-align:center;line-height:1.25;
+}
+.banner{
+  font-family:'Fraunces',serif;font-weight:900;font-size:clamp(2rem,6vw,3.4rem);
+  color:var(--gold);text-align:center;text-shadow:0 4px 16px rgba(0,0,0,.5);
+}
+footer{
+  text-align:center;padding:0 1rem 1.2rem;font-size:.72rem;color:rgba(250,245,236,.55);
+  letter-spacing:.05em;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="eyebrow">Wells Fargo · Employee Enablement</span>
+    <h1>Inbox Action <em>Wheel</em></h1>
+  </div>
+  <div class="round-tag" id="roundTag">Round 1 of 10</div>
+</header>
+
+<main>
+  <!-- WHEEL -->
+  <section class="wheel-zone" aria-label="Wheel">
+    <div class="wheel-wrap">
+      <div class="pointer" aria-hidden="true"></div>
+      <canvas id="wheelCanvas" width="760" height="760" aria-label="Prize wheel"></canvas>
+      <div class="hub">COPILOT</div>
+    </div>
+    <div class="spin-result" id="spinResult" aria-live="polite"></div>
+    <button class="big-btn" id="spinBtn">Spin</button>
+  </section>
+
+  <!-- BOARD -->
+  <section class="board-zone" aria-label="Puzzle board">
+    <div class="category" id="category">Category</div>
+    <div class="puzzle" id="puzzle"></div>
+  </section>
+
+  <!-- CONTROLS -->
+  <section class="controls" aria-label="Controls">
+    <div class="status" id="status">Set up your teams to begin.</div>
+    <div class="kb" id="keyboard" aria-label="Letter picker"></div>
+    <div class="action-row">
+      <button class="chip-btn" id="buyVowelBtn">Buy a vowel · −250</button>
+      <button class="chip-btn" id="solveBtn">Solve the puzzle</button>
+      <button class="chip-btn" id="revealBtn">Host: reveal all</button>
+      <button class="chip-btn" id="nextBtn" disabled>Next puzzle →</button>
+    </div>
+    <div class="hint">Host tip: spin, then tap a consonant. Vowels never need a spin — buy them for 250. Physical keyboard works too.</div>
+  </section>
+
+  <!-- TEAMS -->
+  <section class="teams" id="teams" aria-label="Scoreboard"></section>
+</main>
+
+<footer>Built for the “From inbox overload to action” Copilot in Outlook training · August 2026</footer>
+
+<!-- SETUP OVERLAY -->
+<div class="overlay" id="setupOverlay">
+  <div class="card">
+    <h2>Team setup</h2>
+    <p>Phrases are pulled straight from today's training. Spin for points, pick consonants, buy vowels, and solve for a <strong>+500 bonus</strong>. Land on <strong>Bankrupt</strong> and this round's points vanish.</p>
+    <div class="field">
+      <label>How many teams?</label>
+      <div class="count-row" id="teamCount">
+        <button data-n="2" aria-pressed="true">2</button>
+        <button data-n="3" aria-pressed="false">3</button>
+        <button data-n="4" aria-pressed="false">4</button>
+      </div>
+    </div>
+    <div id="nameFields"></div>
+    <button class="big-btn" id="startBtn">Start the game</button>
+  </div>
+</div>
+
+<!-- SOLVE OVERLAY -->
+<div class="overlay" id="solveOverlay" hidden>
+  <div class="card">
+    <h2>Solve the puzzle</h2>
+    <p id="solvePrompt"></p>
+    <div class="field">
+      <label for="solveInput">Your answer</label>
+      <input type="text" id="solveInput" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="action-row" style="justify-content:center">
+      <button class="big-btn" id="solveConfirm">Lock it in</button>
+      <button class="chip-btn" id="solveCancel" style="border-color:var(--maroon);color:var(--maroon)">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROUND RESULT OVERLAY -->
+<div class="overlay" id="resultOverlay" hidden>
+  <div class="card">
+    <div class="banner" id="resultBanner">Solved!</div>
+    <div class="solve-reveal" id="resultPhrase"></div>
+    <p id="resultDetail" style="text-align:center"></p>
+    <button class="big-btn" id="resultNext">Next puzzle →</button>
+  </div>
+</div>
+
+<!-- FINAL OVERLAY -->
+<div class="overlay" id="finalOverlay" hidden>
+  <div class="card">
+    <div class="banner">Game over</div>
+    <div class="solve-reveal" id="finalWinner"></div>
+    <p id="finalScores" style="text-align:center"></p>
+    <button class="big-btn" id="restartBtn">Play again</button>
+  </div>
+</div>
+
+<script>
+/* ================= PUZZLES — from the training deck ================= */
+const PUZZLES = [
+  {cat:"Copilot Tip",         phrase:"LET COPILOT SUMMARIZE LONG THREADS"},
+  {cat:"Copilot Tip",         phrase:"ASK COPILOT TO CATCH YOU UP"},
+  {cat:"Copilot Tip",         phrase:"COACH YOUR DRAFT BEFORE YOU SEND"},
+  {cat:"Copilot Tip",         phrase:"TEACH COPILOT WHAT MATTERS MOST"},
+  {cat:"Outlook Tip",         phrase:"TRIAGE YOUR INBOX IN PLAIN ENGLISH"},
+  {cat:"Outlook Tip",         phrase:"TURN ONE INSTRUCTION INTO A RULE"},
+  {cat:"Prompt Tip",          phrase:"PROMPT WITH GOAL CONTEXT AND OUTPUT"},
+  {cat:"Meeting Tip",         phrase:"SCHEDULE MEETINGS RIGHT FROM THE THREAD"},
+  {cat:"Planning Tip",        phrase:"PLAN YOUR WHOLE DAY WITH ONE PROMPT"},
+  {cat:"Habit Tip",           phrase:"START WITH ONE WORKFLOW AND REPEAT THE WIN"}
+];
+
+/* ================= WHEEL ================= */
+const WEDGES = [
+  {label:"300", value:300, bg:"#D71E28", fg:"#FFFFFF"},
+  {label:"150", value:150, bg:"#FAF5EC", fg:"#6E1520"},
+  {label:"500", value:500, bg:"#6E1520", fg:"#FFCD41"},
+  {label:"200", value:200, bg:"#FFCD41", fg:"#6E1520"},
+  {label:"BANKRUPT", value:"bankrupt", bg:"#1A0508", fg:"#F42B36"},
+  {label:"250", value:250, bg:"#FAF5EC", fg:"#6E1520"},
+  {label:"400", value:400, bg:"#D71E28", fg:"#FFFFFF"},
+  {label:"100", value:100, bg:"#FFCD41", fg:"#6E1520"},
+  {label:"750", value:750, bg:"#6E1520", fg:"#FFCD41"},
+  {label:"200", value:200, bg:"#FAF5EC", fg:"#6E1520"},
+  {label:"LOSE A TURN", value:"lose", bg:"#1A0508", fg:"#FFCD41"},
+  {label:"300", value:300, bg:"#D71E28", fg:"#FFFFFF"},
+  {label:"1000", value:1000, bg:"#FFCD41", fg:"#B0121C"},
+  {label:"150", value:150, bg:"#FAF5EC", fg:"#6E1520"},
+  {label:"600", value:600, bg:"#6E1520", fg:"#FFCD41"},
+  {label:"250", value:250, bg:"#D71E28", fg:"#FFFFFF"}
+];
+
+const canvas = document.getElementById('wheelCanvas');
+const ctx = canvas.getContext('2d');
+function drawWheel(){
+  const n = WEDGES.length, cx=380, cy=380, r=372;
+  const arc = 2*Math.PI/n;
+  ctx.clearRect(0,0,760,760);
+  WEDGES.forEach((w,i)=>{
+    const a0 = i*arc - Math.PI/2 - arc/2;
+    ctx.beginPath();
+    ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,a0,a0+arc);
+    ctx.closePath();
+    ctx.fillStyle=w.bg; ctx.fill();
+    ctx.strokeStyle="rgba(0,0,0,.3)"; ctx.lineWidth=2; ctx.stroke();
+    // label
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.rotate(a0+arc/2);
+    ctx.textAlign="right";
+    ctx.fillStyle=w.fg;
+    const long = w.label.length>4;
+    ctx.font = (long? "bold 26px":"900 44px")+" Archivo, sans-serif";
+    ctx.fillText(w.label, r-18, long? 9 : 15);
+    ctx.restore();
+  });
+}
+drawWheel();
+document.fonts && document.fonts.ready.then(drawWheel);
+
+/* ================= STATE ================= */
+const state = {
+  teams:[], current:0, round:0,
+  spunValue:null, phase:"setup", // setup | spin | pick | solved | over
+  revealed:new Set(), used:new Set()
+};
+const VOWELS = new Set(["A","E","I","O","U"]);
+
+/* ================= DOM ================= */
+const $ = id=>document.getElementById(id);
+const statusEl=$('status'), puzzleEl=$('puzzle'), categoryEl=$('category'),
+      spinBtn=$('spinBtn'), spinResult=$('spinResult'), roundTag=$('roundTag'),
+      teamsEl=$('teams'), kbEl=$('keyboard');
+
+/* ================= SETUP ================= */
+let teamN=2;
+$('teamCount').addEventListener('click',e=>{
+  const b=e.target.closest('button'); if(!b)return;
+  teamN=+b.dataset.n;
+  [...$('teamCount').children].forEach(x=>x.setAttribute('aria-pressed', x===b));
+  renderNameFields();
+});
+function renderNameFields(){
+  $('nameFields').innerHTML = Array.from({length:teamN},(_,i)=>`
+    <div class="field" style="margin-bottom:.6rem">
+      <label for="tn${i}">Team ${i+1} name</label>
+      <input type="text" id="tn${i}" value="Team ${i+1}" maxlength="18">
+    </div>`).join('');
+}
+renderNameFields();
+
+$('startBtn').addEventListener('click',()=>{
+  state.teams = Array.from({length:teamN},(_,i)=>({
+    name: $('tn'+i).value.trim()||`Team ${i+1}`, score:0, roundPts:0
+  }));
+  $('setupOverlay').hidden = true;
+  $('setupOverlay').style.display='none';
+  startRound(0);
+});
+
+/* ================= ROUND FLOW ================= */
+function startRound(idx){
+  state.round=idx;
+  state.revealed=new Set(); state.used=new Set();
+  state.spunValue=null; state.phase="spin";
+  state.teams.forEach(t=>t.roundPts=0);
+  roundTag.textContent=`Round ${idx+1} of ${PUZZLES.length}`;
+  categoryEl.textContent=PUZZLES[idx].cat;
+  renderPuzzle(); renderKeyboard(); renderTeams();
+  spinResult.textContent="";
+  $('nextBtn').disabled=true;
+  setStatus(`<b>${cur().name}</b> — spin the wheel!`);
+  syncButtons();
+}
+function cur(){ return state.teams[state.current]; }
+function setStatus(html){ statusEl.innerHTML=html; }
+
+function renderPuzzle(){
+  const words = PUZZLES[state.round].phrase.split(' ');
+  puzzleEl.innerHTML='';
+  let line=document.createElement('div'); line.className='line';
+  let lineLen=0; const MAX=16;
+  words.forEach(word=>{
+    if(lineLen>0 && lineLen+word.length+1>MAX){
+      puzzleEl.appendChild(line);
+      line=document.createElement('div'); line.className='line'; lineLen=0;
+    }
+    const w=document.createElement('div'); w.className='word';
+    [...word].forEach(ch=>{
+      const t=document.createElement('div');
+      if(/[A-Z]/.test(ch)){
+        t.className='tile'+(state.revealed.has(ch)?' revealed':'');
+        t.dataset.letter=ch;
+        t.innerHTML=`<div class="face back"></div><div class="face front">${ch}</div>`;
+      }else{
+        t.className='tile punct'; t.textContent=ch;
+      }
+      w.appendChild(t);
+    });
+    line.appendChild(w);
+    lineLen+=word.length+1;
+  });
+  puzzleEl.appendChild(line);
+}
+
+function renderKeyboard(){
+  const rows=["ABCDEFGHI","JKLMNOPQR","STUVWXYZ"];
+  kbEl.innerHTML=rows.map(r=>`<div class="kb-row">${[...r].map(L=>
+    `<button class="key ${VOWELS.has(L)?'vowel':''}" data-l="${L}" ${state.used.has(L)?'disabled':''}>${L}</button>`
+  ).join('')}</div>`).join('');
+}
+
+function renderTeams(){
+  teamsEl.innerHTML=state.teams.map((t,i)=>`
+    <div class="team ${i===state.current&&state.phase!=='over'?'active':''}">
+      <div class="name"><span class="turn-dot"></span>${t.name}</div>
+      <div class="score">${t.score.toLocaleString()}</div>
+      <div class="roundpts">This round: ${t.roundPts.toLocaleString()}</div>
+    </div>`).join('');
+}
+
+/* ================= SPIN ================= */
+let wheelAngle=0, spinning=false;
+spinBtn.addEventListener('click',()=>{
+  if(state.phase!=='spin'||spinning)return;
+  spinning=true; syncButtons();
+  spinResult.textContent="";
+  const n=WEDGES.length, arc=360/n;
+  const target=Math.floor(Math.random()*n);
+  const spins=4+Math.floor(Math.random()*3);
+  const jitter=(Math.random()-.5)*arc*.7;
+  // pointer at top; wedge i center at i*arc when angle=0; rotate so target lands on top
+  const dest = 360*spins - target*arc + jitter;
+  wheelAngle += dest - (wheelAngle % 360);
+  canvas.style.transform=`rotate(${wheelAngle}deg)`;
+  setStatus(`<b>${cur().name}</b> is spinning…`);
+  setTimeout(()=>{
+    spinning=false;
+    const w=WEDGES[target];
+    if(w.value==='bankrupt'){
+      spinResult.textContent="BANKRUPT!";
+      cur().score-=cur().roundPts; cur().roundPts=0;
+      renderTeams();
+      nextTeam(`<b>${cur().name}</b> hit Bankrupt — round points gone.`);
+    }else if(w.value==='lose'){
+      spinResult.textContent="Lose a turn";
+      nextTeam(`<b>${cur().name}</b> loses a turn.`);
+    }else{
+      state.spunValue=w.value; state.phase='pick';
+      spinResult.textContent=`${w.value} points`;
+      setStatus(`<b>${cur().name}</b> — pick a consonant for <b>${w.value}</b> each.`);
+    }
+    syncButtons();
+  },5300);
+});
+
+function nextTeam(msg){
+  state.current=(state.current+1)%state.teams.length;
+  state.spunValue=null; state.phase='spin';
+  renderTeams();
+  setStatus(`${msg} <b>${cur().name}</b> — spin!`);
+  syncButtons();
+}
+
+/* ================= LETTERS ================= */
+kbEl.addEventListener('click',e=>{
+  const b=e.target.closest('.key'); if(!b||b.disabled)return;
+  handleLetter(b.dataset.l);
+});
+document.addEventListener('keydown',e=>{
+  if(!/^[a-zA-Z]$/.test(e.key))return;
+  if(!$('solveOverlay').hidden||!$('setupOverlay').hidden&&$('setupOverlay').style.display!=='none')return;
+  const L=e.key.toUpperCase();
+  if(!state.used.has(L)) handleLetter(L);
+});
+
+function handleLetter(L){
+  const isVowel=VOWELS.has(L);
+  if(isVowel){
+    if(state.phase!=='spin'&&state.phase!=='pick')return;
+    if(cur().score<250){setStatus(`<b>${cur().name}</b> needs 250 to buy a vowel.`);return;}
+    cur().score-=250;
+  }else{
+    if(state.phase!=='pick')return;
+  }
+  state.used.add(L);
+  const count=[...PUZZLES[state.round].phrase].filter(c=>c===L).length;
+  if(count>0){
+    state.revealed.add(L);
+    revealTiles(L);
+    if(!isVowel){
+      const pts=state.spunValue*count;
+      cur().score+=pts; cur().roundPts+=pts;
+      setStatus(`<b>${L}</b> ×${count} — <b>+${pts}</b> for ${cur().name}. Spin again, buy a vowel, or solve.`);
+    }else{
+      setStatus(`<b>${L}</b> ×${count}! ${cur().name}, keep going.`);
+    }
+    state.spunValue=null; state.phase='spin';
+    renderTeams(); renderKeyboard(); syncButtons();
+    checkAllRevealed();
+  }else{
+    renderKeyboard();
+    if(isVowel){ renderTeams(); }
+    nextTeam(`No <b>${L}</b>.`);
+  }
+}
+
+function revealTiles(L){
+  document.querySelectorAll(`.tile[data-letter="${L}"]`).forEach((t,i)=>{
+    setTimeout(()=>{t.classList.add('revealed','flash')}, i*160);
+  });
+}
+
+function checkAllRevealed(){
+  const letters=new Set([...PUZZLES[state.round].phrase].filter(c=>/[A-Z]/.test(c)));
+  if([...letters].every(l=>state.revealed.has(l))){
+    finishRound(true, cur(), 0);
+  }
+}
+
+/* ================= SOLVE ================= */
+$('solveBtn').addEventListener('click',()=>{
+  if(state.phase!=='spin'&&state.phase!=='pick')return;
+  $('solvePrompt').innerHTML=`<b>${cur().name}</b>, say it out loud, then type it to confirm. Correct = <b>+500</b>. Wrong = lose your turn.`;
+  $('solveInput').value='';
+  $('solveOverlay').hidden=false;
+  $('solveInput').focus();
+});
+$('solveCancel').addEventListener('click',()=>{$('solveOverlay').hidden=true});
+$('solveConfirm').addEventListener('click',trySolve);
+$('solveInput').addEventListener('keydown',e=>{if(e.key==='Enter')trySolve()});
+
+function trySolve(){
+  const guess=$('solveInput').value.toUpperCase().replace(/[^A-Z]/g,'');
+  const answer=PUZZLES[state.round].phrase.replace(/[^A-Z]/g,'');
+  $('solveOverlay').hidden=true;
+  if(guess===answer){
+    finishRound(true, cur(), 500);
+  }else{
+    nextTeam(`<b>${cur().name}</b> guessed wrong.`);
+  }
+}
+
+$('revealBtn').addEventListener('click',()=>{
+  if(state.phase==='solved'||state.phase==='over')return;
+  finishRound(false,null,0);
+});
+
+function finishRound(solved, team, bonus){
+  state.phase='solved';
+  [...PUZZLES[state.round].phrase].forEach(c=>{if(/[A-Z]/.test(c))state.revealed.add(c)});
+  document.querySelectorAll('.tile[data-letter]').forEach((t,i)=>{
+    setTimeout(()=>t.classList.add('revealed'), i*40);
+  });
+  if(solved&&team){ team.score+=bonus; }
+  renderTeams(); syncButtons();
+  $('nextBtn').disabled=false;
+  setTimeout(()=>{
+    $('resultBanner').textContent = solved? "Solved!" : "Revealed";
+    $('resultPhrase').textContent = PUZZLES[state.round].phrase;
+    $('resultDetail').innerHTML = solved
+      ? `<b>${team.name}</b> takes it${bonus?` — +${bonus} bonus`:''}. Total: <b>${team.score.toLocaleString()}</b>`
+      : `Host revealed the board. No bonus awarded.`;
+    $('resultOverlay').hidden=false;
+  }, 900);
+}
+
+$('resultNext').addEventListener('click',advance);
+$('nextBtn').addEventListener('click',advance);
+function advance(){
+  $('resultOverlay').hidden=true;
+  if(state.round+1>=PUZZLES.length){ endGame(); return; }
+  state.current=(state.current+1)%state.teams.length; // rotate starter
+  startRound(state.round+1);
+}
+
+function endGame(){
+  state.phase='over';
+  const sorted=[...state.teams].sort((a,b)=>b.score-a.score);
+  const tie = sorted.length>1 && sorted[0].score===sorted[1].score;
+  $('finalWinner').textContent = tie ? "It's a tie!" : `${sorted[0].name} wins!`;
+  $('finalScores').innerHTML = sorted.map(t=>`${t.name}: <b>${t.score.toLocaleString()}</b>`).join('<br>');
+  $('finalOverlay').hidden=false;
+  renderTeams();
+}
+$('restartBtn').addEventListener('click',()=>location.reload());
+
+/* ================= BUTTON SYNC ================= */
+function syncButtons(){
+  spinBtn.disabled = spinning || state.phase!=='spin';
+  $('solveBtn').disabled = !(state.phase==='spin'||state.phase==='pick');
+  $('buyVowelBtn').disabled = !(state.phase==='spin'||state.phase==='pick') || cur()?.score<250;
+  $('revealBtn').disabled = state.phase==='solved'||state.phase==='over';
+}
+$('buyVowelBtn').addEventListener('click',()=>{
+  setStatus(`Tap a gold vowel key — costs 250.`);
+});
+</script>
+</body>
+</html>
